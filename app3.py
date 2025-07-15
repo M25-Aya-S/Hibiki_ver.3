@@ -2,6 +2,7 @@ import os
 import streamlit as st
 from supabase import create_client
 import streamlit.components.v1 as components
+from streamlit_javascript import st_javascript
 import json
 from dotenv import load_dotenv
 from langmem import create_manage_memory_tool, create_search_memory_tool
@@ -16,6 +17,8 @@ os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 POSTGRES_URL = st.secrets["POSTGRES_URL"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
+APP_URL = st.secrets["APP_URL"]
+
 # --- Supabase クライアント作成 ---
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -27,32 +30,56 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_KEY"])
 
 # --- ページ読み込み時にSupabase認証状態をチェック ---
-if "user" not in st.session_state:
+from streamlit_javascript import st_javascript
+
+# --- Supabase公式のAuth UIをiframeで埋め込む ---
+AUTH_UI_URL = f"{SUPABASE_URL}/auth/v1/embed?disable_signup=true&redirect_to={APP_URL}"
+
+st.markdown(f"""
+<iframe
+    src="{AUTH_UI_URL}"
+    style="width:100%; height:600px; border:none;"
+    id="auth-iframe"
+></iframe>
+""", unsafe_allow_html=True)
+
+# JavaScriptでiframeからaccess_tokenを受け取る（Supabase公式Auth UIがpostMessageしてくれる）
+js_code = """
+window.addEventListener("message", (event) => {
+    const data = event.data;
+    if (data.type === "supabase_auth") {
+        window.streamlitSetToken(data.access_token);
+    }
+});
+"""
+
+access_token = st_javascript(js_code, key="auth-listener")
+
+# --- トークンが取得できたら Supabase にセッションをセット ---
+if access_token and "user" not in st.session_state:
     try:
+        supabase.auth.set_session({"access_token": access_token, "refresh_token": ""})
         user_resp = supabase.auth.get_user()
-        st.write("ユーザー情報:", user_resp)
         if user_resp and user_resp.user:
             st.session_state["user"] = {
                 "email": user_resp.user.email,
                 "id": user_resp.user.id
             }
-            st.experimental_rerun()
+            st.experimental_rerun()  # セッション保存後リロード
+        else:
+            st.warning("ユーザー情報の取得に失敗しました")
     except Exception as e:
-        st.write("エラー:", e)
+        st.error(f"エラーが発生しました: {e}")
 
-
-# --- ユーザー未ログインならログイン画面表示 ---
+# --- ユーザー未ログインなら中断 ---
 if "user" not in st.session_state:
-    st.title("ログイン")
-    login_btn = st.button("Googleでログイン")
-    if login_btn:
-        redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"
-        url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect_to}"
-        st.markdown(f"[こちらをクリックしてログイン]({url})", unsafe_allow_html=True)
+    st.info("ログインを完了してください。")
     st.stop()
-else:
-    user = st.session_state["user"]
-    st.success(f"こんにちは、{user['email']} さん！")
+
+# --- ログイン済みなら続行 ---
+user = st.session_state["user"]
+st.success(f"こんにちは、{user['email']} さん！")
+
 
 
 # --- LangMem + Postgres 初期化 ---
