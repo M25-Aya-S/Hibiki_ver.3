@@ -3,7 +3,6 @@ import streamlit as st
 from supabase import create_client
 import streamlit.components.v1 as components
 import json
-from streamlit_auth_component import login_form
 from dotenv import load_dotenv
 from langmem import create_manage_memory_tool, create_search_memory_tool
 from langgraph.store.postgres import PostgresStore
