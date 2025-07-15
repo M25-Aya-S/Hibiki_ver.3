@@ -17,36 +17,55 @@ os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 POSTGRES_URL = st.secrets["POSTGRES_URL"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
-APP_URL = st.secrets["APP_URL"]
-
 # --- Supabase クライアント作成 ---
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-st.write(supabase)
 
 # --- Streamlit UI 設定 ---
 st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
-# --- 認証チェック ---
+# --- Supabase Auth設定 ---
+supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_KEY"])
+
+# --- ページ読み込み時にSupabase認証状態をチェック ---
 if "user" not in st.session_state:
-    st.info("ログインを完了してください。")
+    try:
+        user_resp = supabase.auth.get_user()
+        st.write("ユーザー情報:", user_resp)
+        if user_resp and user_resp.user:
+            st.session_state["user"] = {
+                "email": user_resp.user.email,
+                "id": user_resp.user.id
+            }
+            st.experimental_rerun()
+    except Exception as e:
+        st.write("エラー:", e)
 
-    st.components.v1.html(f"""
-        <iframe src="{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={st.secrets["APP_URL"]}"
-                style="width:100%; height:500px;" frameborder="0"></iframe>
-    """, height=550)
+
+# --- ユーザー未ログインならログイン画面表示 ---
+if "user" not in st.session_state:
+    st.title("ログイン")
+    login_btn = st.button("Googleでログイン")
+    if login_btn:
+        redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"
+        url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect_to}"
+        st.markdown(f"[こちらをクリックしてログイン]({url})", unsafe_allow_html=True)
     st.stop()
+else:
+    user = st.session_state["user"]
+    st.success(f"こんにちは、{user['email']} さん！")
 
-# --- LangMemのセットアップ（ユーザーごと） ---
-user_email = st.session_state["user"]["email"]
-namespace = ("memories", user_email)
 
+# --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
 store = store_cm.__enter__()
 store.setup()
 
-manage_tool = create_manage_memory_tool(store=store, namespace=namespace)
-search_tool = create_search_memory_tool(store=store, namespace=namespace)
+user_id = st.session_state["user"]["email"]  # ユーザーのemailをIDに使う（暫定）
+namespace = ("memories", user_id)
+
+manage_tool = create_manage_memory_tool(store=store, namespace=("memories", user_id))
+search_tool = create_search_memory_tool(store=store, namespace=("memories", user_id))
 
 
 # --- セッション状態の初期化 ---
