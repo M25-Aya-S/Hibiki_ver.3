@@ -30,14 +30,16 @@ supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_K
 if "user" not in st.session_state:
     try:
         user_resp = supabase.auth.get_user()
+        st.write("ユーザー情報:", user_resp)
         if user_resp and user_resp.user:
             st.session_state["user"] = {
                 "email": user_resp.user.email,
                 "id": user_resp.user.id
             }
-            st.experimental_rerun()  # ユーザー情報をセッションに入れたら即リロード
-    except Exception:
-        pass
+            st.experimental_rerun()
+    except Exception as e:
+        st.write("エラー:", e)
+
 
 # --- ユーザー未ログインならログイン画面表示 ---
 if "user" not in st.session_state:
