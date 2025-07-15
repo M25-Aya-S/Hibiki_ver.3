@@ -21,6 +21,7 @@ APP_URL = st.secrets["APP_URL"]
 
 # --- Supabase クライアント作成 ---
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+st.write(supabase)
 
 # --- Streamlit UI 設定 ---
 st.set_page_config(page_title="ひびきチャット", layout="centered")
