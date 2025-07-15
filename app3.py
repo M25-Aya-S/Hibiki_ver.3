@@ -35,6 +35,7 @@ if "user" not in st.session_state:
                 "email": user_resp.user.email,
                 "id": user_resp.user.id
             }
+            st.experimental_rerun()  # ユーザー情報をセッションに入れたら即リロード
     except Exception:
         pass
 
