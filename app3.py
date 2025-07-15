@@ -16,7 +16,6 @@ os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 POSTGRES_URL = st.secrets["POSTGRES_URL"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
-APP_URL = st.secrets["APP_URL"]
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 # --- Streamlit UI 設定 ---
