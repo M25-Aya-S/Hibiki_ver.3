@@ -16,6 +16,7 @@ os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 POSTGRES_URL = st.secrets["POSTGRES_URL"]
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
+# --- Supabase クライアント作成 ---
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 # --- Streamlit UI 設定 ---
@@ -25,47 +26,35 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 # --- Supabase Auth設定 ---
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_KEY"])
 
-
-# --- ログイン画面 ---
+# --- 認証処理 ---
 if "user" not in st.session_state:
-    st.title("ログイン")
+    user = supabase.auth.get_user()
+    if user and user.user:
+        st.session_state["user"] = {
+            "email": user.user.email,
+            "id": user.user.id
+        }
+    else:
+        st.title("ログイン")
+        login_btn = st.button("Googleでログイン")
+        if login_btn:
+            redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"
+            url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect_to}"
+            st.markdown(f"[こちらをクリックしてログイン]({url})", unsafe_allow_html=True)
+        st.stop()
 
-    # Google認証用ボタン（実際にはフロント側のJSでログインを処理）
-    login_btn = st.button("Googleでログイン")
-
-    if login_btn:
-        # Supabaseのログイン用URLを生成（magic linkでもOAuthでも可能）
-        redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"  # デプロイ先のURLに合わせて修正
-        url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect_to}"
-        st.markdown(f"[こちらをクリックしてログイン]({url})", unsafe_allow_html=True)
-
-        # Supabaseセッションからユーザー情報を取得して保持（ログイン後に呼ばれることを想定）
-        try:
-            user = supabase.auth.get_user()
-            if user and user.user:
-                st.session_state["user"] = {
-                    "email": user.user.email,
-                    "id": user.user.id
-                }
-                st.experimental_rerun()  # ログイン後にページをリロード
-        except Exception as e:
-            st.error("ユーザー情報の取得に失敗しました")
-
-    st.stop()  # ログインしていなければそれ以上表示しない
-else:
-    user = st.session_state["user"]
-    st.success(f"こんにちは、{user['email']} さん！")
+# --- ユーザー情報取得 ---
+user = st.session_state["user"]
+st.success(f"こんにちは、{user['email']} さん！")
 
 # --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
 store = store_cm.__enter__()
 store.setup()
 
-user_id = st.session_state["user"]["email"]  # ユーザーのemailをIDに使う（暫定）
-namespace = ("memories", user_id)
-
-manage_tool = create_manage_memory_tool(store=store, namespace=("memories", user_id))
-search_tool = create_search_memory_tool(store=store, namespace=("memories", user_id))
+namespace = ("memories", user["email"])
+manage_tool = create_manage_memory_tool(store=store, namespace=namespace)
+search_tool = create_search_memory_tool(store=store, namespace=namespace)
 
 
 # --- セッション状態の初期化 ---
