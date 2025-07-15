@@ -26,35 +26,31 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 # --- Supabase Auth設定 ---
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_KEY"])
 
-# --- ログイン画面 ---
+# --- ページ読み込み時にSupabase認証状態をチェック ---
+if "user" not in st.session_state:
+    try:
+        user_resp = supabase.auth.get_user()
+        if user_resp and user_resp.user:
+            st.session_state["user"] = {
+                "email": user_resp.user.email,
+                "id": user_resp.user.id
+            }
+    except Exception:
+        pass
+
+# --- ユーザー未ログインならログイン画面表示 ---
 if "user" not in st.session_state:
     st.title("ログイン")
-
-    # Google認証用ボタン（実際にはフロント側のJSでログインを処理）
     login_btn = st.button("Googleでログイン")
-
     if login_btn:
-        # Supabaseのログイン用URLを生成（magic linkでもOAuthでも可能）
-        redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"  # デプロイ先のURLに合わせて修正
+        redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"
         url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect_to}"
         st.markdown(f"[こちらをクリックしてログイン]({url})", unsafe_allow_html=True)
-
-        # Supabaseセッションからユーザー情報を取得して保持（ログイン後に呼ばれることを想定）
-        try:
-            user = supabase.auth.get_user()
-            if user and user.user:
-                st.session_state["user"] = {
-                    "email": user.user.email,
-                    "id": user.user.id
-                }
-                st.experimental_rerun()  # ログイン後にページをリロード
-        except Exception as e:
-            st.error("ユーザー情報の取得に失敗しました")
-
-    st.stop()  # ログインしていなければそれ以上表示しない
+    st.stop()
 else:
     user = st.session_state["user"]
     st.success(f"こんにちは、{user['email']} さん！")
+
 
 # --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
