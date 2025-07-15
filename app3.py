@@ -36,7 +36,7 @@ if "user" not in st.session_state:
 
     if login_btn:
         # Supabaseのログイン用URLを生成（magic linkでもOAuthでも可能）
-        redirect_to = "http://localhost:8501"  # デプロイ先のURLに合わせて修正
+        redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"  # デプロイ先のURLに合わせて修正
         url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect_to}"
         st.markdown(f"[こちらをクリックしてログイン]({url})", unsafe_allow_html=True)
 
