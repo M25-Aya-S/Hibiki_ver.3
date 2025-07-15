@@ -27,72 +27,26 @@ st.write(supabase)
 st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
-# --- Supabase Auth設定 ---
-supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_KEY"])
-
-# --- ページ読み込み時にSupabase認証状態をチェック ---
-from streamlit_javascript import st_javascript
-
-# --- Supabase公式のAuth UIをiframeで埋め込む ---
-AUTH_UI_URL = f"{SUPABASE_URL}/auth/v1/embed?disable_signup=true&redirect_to={APP_URL}"
-
-st.markdown(f"""
-<iframe
-    src="{AUTH_UI_URL}"
-    style="width:100%; height:600px; border:none;"
-    id="auth-iframe"
-></iframe>
-""", unsafe_allow_html=True)
-
-# JavaScriptでiframeからaccess_tokenを受け取る（Supabase公式Auth UIがpostMessageしてくれる）
-js_code = """
-window.addEventListener("message", (event) => {
-    const data = event.data;
-    if (data.type === "supabase_auth") {
-        window.streamlitSetToken(data.access_token);
-    }
-});
-"""
-
-access_token = st_javascript(js_code, key="auth-listener")
-
-# --- トークンが取得できたら Supabase にセッションをセット ---
-if access_token and "user" not in st.session_state:
-    try:
-        supabase.auth.set_session({"access_token": access_token, "refresh_token": ""})
-        user_resp = supabase.auth.get_user()
-        if user_resp and user_resp.user:
-            st.session_state["user"] = {
-                "email": user_resp.user.email,
-                "id": user_resp.user.id
-            }
-            st.experimental_rerun()  # セッション保存後リロード
-        else:
-            st.warning("ユーザー情報の取得に失敗しました")
-    except Exception as e:
-        st.error(f"エラーが発生しました: {e}")
-
-# --- ユーザー未ログインなら中断 ---
+# --- 認証チェック ---
 if "user" not in st.session_state:
     st.info("ログインを完了してください。")
+
+    st.components.v1.html(f"""
+        <iframe src="{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={st.secrets["APP_URL"]}"
+                style="width:100%; height:500px;" frameborder="0"></iframe>
+    """, height=550)
     st.stop()
 
-# --- ログイン済みなら続行 ---
-user = st.session_state["user"]
-st.success(f"こんにちは、{user['email']} さん！")
+# --- LangMemのセットアップ（ユーザーごと） ---
+user_email = st.session_state["user"]["email"]
+namespace = ("memories", user_email)
 
-
-
-# --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
 store = store_cm.__enter__()
 store.setup()
 
-user_id = st.session_state["user"]["email"]  # ユーザーのemailをIDに使う（暫定）
-namespace = ("memories", user_id)
-
-manage_tool = create_manage_memory_tool(store=store, namespace=("memories", user_id))
-search_tool = create_search_memory_tool(store=store, namespace=("memories", user_id))
+manage_tool = create_manage_memory_tool(store=store, namespace=namespace)
+search_tool = create_search_memory_tool(store=store, namespace=namespace)
 
 
 # --- セッション状態の初期化 ---
