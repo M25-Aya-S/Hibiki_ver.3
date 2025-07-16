@@ -27,33 +27,48 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 # --- Supabase Auth設定 ---
 supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_KEY"])
 
-# --- ページ読み込み時にSupabase認証状態をチェック ---
+# --- 認証状態チェック＆アクセストークン取得 ---
 if "user" not in st.session_state:
-    try:
-        user_resp = supabase.auth.get_user()
-        st.write("ユーザー情報:", user_resp)
-        if user_resp and user_resp.user:
-            st.session_state["user"] = {
-                "email": user_resp.user.email,
-                "id": user_resp.user.id
-            }
-            st.experimental_rerun()
-    except Exception as e:
-        st.write("エラー:", e)
+    token = st_javascript("""() => {
+        return window.localStorage.getItem("supabase.auth.token")
+    }""")
 
+    if token:
+        try:
+            parsed = json.loads(token)
+            access_token = parsed["currentSession"]["access_token"]
 
-# --- ユーザー未ログインならログイン画面表示 ---
+            # アクセストークンを使ってSupabaseユーザー情報を取得
+            from supabase import create_client, Client
+            supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+            user_resp = supabase.auth.get_user(access_token)
+            user_data = user_resp.user
+
+            if user_data:
+                st.session_state["user"] = {
+                    "email": user_data.email,
+                    "id": user_data.id,
+                    "access_token": access_token
+                }
+                st.experimental_rerun()
+        except Exception as e:
+            st.error(f"ログイン情報の取得に失敗しました: {e}")
+
+# --- ログインUIの表示（未ログイン時） ---
 if "user" not in st.session_state:
-    st.title("ログイン")
-    login_btn = st.button("Googleでログイン")
-    if login_btn:
-        redirect_to = "https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"
-        url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={redirect_to}"
-        st.markdown(f"[こちらをクリックしてログイン]({url})", unsafe_allow_html=True)
+    st.markdown("### Googleでログインしてください。")
+    iframe_html = '''
+    <iframe
+      src="https://xdzqnjhxunuufehxlezv.supabase.co/auth/v1/authorize?provider=google&redirect_to=https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"
+      width="100%" height="500" style="border:none;"
+    ></iframe>
+    '''
+    components.html(iframe_html, height=500)
     st.stop()
 else:
     user = st.session_state["user"]
     st.success(f"こんにちは、{user['email']} さん！")
+
 
 
 # --- LangMem + Postgres 初期化 ---
