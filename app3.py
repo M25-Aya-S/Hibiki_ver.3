@@ -26,25 +26,32 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
-# 認証トークン取得（JavaScript経由）
-token = st.query_params.get("access_token", None)
+# --- 認証トークン取得（URLのクエリから） ---
+query_params = st.query_params
+access_token = query_params.get("access_token", None)
 
-if token is None:
-    iframe_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
+# --- 認証未完了ならログインリンクを表示 ---
+if access_token is None:
+    login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
     st.markdown("Googleでログインしてください。")
-    components.iframe(iframe_url, height=600, scrolling=True)
+    st.markdown(f"[➡️ Googleでログインする]({login_url})")
     st.stop()
 
-# --- 認証トークンを使ってユーザー情報取得 ---
+# --- トークンでユーザー情報取得 ---
 try:
-    user = supabase.auth.get_user(token)
-    user_id = user.user.email
-    st.session_state["user"] = {"email": user_id, "id": user.user.id}
-    st.success(f"こんにちは、{user_id} さん！")
+    user = supabase.auth.get_user(access_token)
+    if user and user.user:
+        st.session_state["user"] = {
+            "email": user.user.email,
+            "id": user.user.id
+        }
+        st.success(f"こんにちは、{user.user.email} さん！")
+    else:
+        st.error("ユーザー情報を取得できませんでした。")
+        st.stop()
 except Exception as e:
-    st.error("ログインに失敗しました。再読み込みしてください。")
+    st.error("ログイン処理に失敗しました。ページを再読み込みしてください。")
     st.stop()
-
 
 # --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
