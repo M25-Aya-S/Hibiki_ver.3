@@ -24,51 +24,24 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
-# --- Supabase Auth設定 ---
-supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_ANON_KEY"])
+# 認証トークン取得（JavaScript経由）
+token = st.experimental_get_query_params().get("access_token", [None])[0]
 
-# --- 認証状態チェック＆アクセストークン取得 ---
-if "user" not in st.session_state:
-    token = st_javascript("""() => {
-        return window.localStorage.getItem("supabase.auth.token")
-    }""")
-
-    if token:
-        try:
-            parsed = json.loads(token)
-            access_token = parsed["currentSession"]["access_token"]
-
-            # アクセストークンを使ってSupabaseユーザー情報を取得
-            from supabase import create_client, Client
-            supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-            user_resp = supabase.auth.get_user(access_token)
-            user_data = user_resp.user
-
-            if user_data:
-                st.session_state["user"] = {
-                    "email": user_data.email,
-                    "id": user_data.id,
-                    "access_token": access_token
-                }
-                st.experimental_rerun()
-        except Exception as e:
-            st.error(f"ログイン情報の取得に失敗しました: {e}")
-
-# --- ログインUIの表示（未ログイン時） ---
-if "user" not in st.session_state:
-    st.markdown("### Googleでログインしてください。")
-    iframe_html = '''
-    <iframe
-      src="https://xdzqnjhxunuufehxlezv.supabase.co/auth/v1/authorize?provider=google&redirect_to=https://hibikiver3-52ds6nhqqk5febw3jdyd7u.streamlit.app/"
-      width="100%" height="500" style="border:none;"
-    ></iframe>
-    '''
-    components.html(iframe_html, height=500)
+if token is None:
+    iframe_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
+    st.markdown("Googleでログインしてください。")
+    st.components.v1.iframe(iframe_url, height=600)
     st.stop()
-else:
-    user = st.session_state["user"]
-    st.success(f"こんにちは、{user['email']} さん！")
 
+# --- 認証トークンを使ってユーザー情報取得 ---
+try:
+    user = supabase.auth.get_user(token)
+    user_id = user.user.email
+    st.session_state["user"] = {"email": user_id, "id": user.user.id}
+    st.success(f"こんにちは、{user_id} さん！")
+except Exception as e:
+    st.error("ログインに失敗しました。再読み込みしてください。")
+    st.stop()
 
 
 # --- LangMem + Postgres 初期化 ---
