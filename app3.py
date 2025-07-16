@@ -4,6 +4,7 @@ from supabase import create_client
 import streamlit.components.v1 as components
 from streamlit_javascript import st_javascript
 import json
+import urllib.parse
 from dotenv import load_dotenv
 from langmem import create_manage_memory_tool, create_search_memory_tool
 from langgraph.store.postgres import PostgresStore
