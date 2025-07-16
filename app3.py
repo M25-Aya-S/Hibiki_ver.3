@@ -32,7 +32,7 @@ token = st.query_params.get("access_token", None)
 if token is None:
     iframe_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
     st.markdown("Googleでログインしてください。")
-    st.components.v1.iframe(iframe_url, height=600)
+    components.iframe(iframe_url, height=600, scrolling=True)
     st.stop()
 
 # --- 認証トークンを使ってユーザー情報取得 ---
