@@ -56,7 +56,7 @@ st.write("access_token:", access_token)
 
 # --- 認証未完了ならログインリンクを表示 ---
 if access_token is None:
-    login_url = f"{SUPABASE_URL}/auth/v1/token?grant_type=id_token&redirect_to={APP_URL}"
+    login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
     st.markdown("Googleでログインしてください。")
     st.markdown(f"[➡️ Googleでログインする]({login_url})")
     st.stop()
