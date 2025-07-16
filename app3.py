@@ -32,30 +32,27 @@ query_params = st.query_params
 access_token = query_params.get("access_token", None)
 st.write("access_token:", access_token)  # トークンが取れているか確認
 
-# --- Step 1: access_token がセッションにないなら、JSで取得を試みる ---
+# --- 1. JSでハッシュのaccess_tokenを取得し、セッションに保存 ---
 if "access_token" not in st.session_state:
     hash_str = st_javascript("window.location.hash")
-    st.write("🔍 window.location.hash:", hash_str)
-
     if hash_str and hash_str.startswith("#"):
-        query_str = hash_str[1:]  # '#' を除く
+        query_str = hash_str[1:]
         params = urllib.parse.parse_qs(query_str)
-        token_list = params.get("access_token", [])
-        if token_list:
-            st.session_state["access_token"] = token_list[0]
-            # URLのハッシュを削除（ユーザーに見せないため）
-            st_javascript("window.location.hash = ''")
-            st.experimental_rerun()  # トークンをセッションに保存後、ページを再読み込み
-        else:
-            st.error("アクセストークンが見つかりませんでした。")
-            st.stop()
-    else:
-        st.warning("アクセストークンがURLに見つかりませんでした。ログインしてください。")
-        st.stop()
+        access_token_list = params.get("access_token", [])
+        if access_token_list:
+            st.session_state["access_token"] = access_token_list[0]
+            # ハッシュをURLから削除（見た目用）
+            st_javascript("""
+            window.history.replaceState(null, null, window.location.pathname + window.location.search);
+            """)
 
-# --- Step 2: セッションに保存された access_token を利用 ---
+# --- 2. セッションのトークン優先、なければクエリパラメータを利用 ---
 access_token = st.session_state.get("access_token")
-st.write("✅ access_token:", access_token)
+if not access_token:
+    query_params = st.query_params
+    access_token = query_params.get("access_token", None)
+
+st.write("access_token:", access_token)
 
 # --- 認証未完了ならログインリンクを表示 ---
 if access_token is None:
