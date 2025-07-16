@@ -32,18 +32,27 @@ query_params = st.query_params
 access_token = query_params.get("access_token", None)
 st.write("access_token:", access_token)  # トークンが取れているか確認
 
-# --- access_tokenがなければハッシュから取得を試みる ---
-if access_token is None:
+# --- 1. JSでハッシュのaccess_tokenを取得し、セッションに保存 ---
+if "access_token" not in st.session_state:
     hash_str = st_javascript("window.location.hash")
-    st.write("window.location.hash:", hash_str)  # デバッグ用
     if hash_str and hash_str.startswith("#"):
-        query_str = hash_str[1:]  # #を除く
+        query_str = hash_str[1:]
         params = urllib.parse.parse_qs(query_str)
         access_token_list = params.get("access_token", [])
         if access_token_list:
-            access_token = access_token_list[0]
-            st.experimental_set_query_params(access_token=access_token)  # URLにもセット
-            st.write("access_token (hash):", access_token)  # 取得できたトークン
+            st.session_state["access_token"] = access_token_list[0]
+            # ハッシュをURLから削除（見た目用）
+            st_javascript("""
+            window.history.replaceState(null, null, window.location.pathname + window.location.search);
+            """)
+
+# --- 2. セッションのトークン優先、なければクエリパラメータを利用 ---
+access_token = st.session_state.get("access_token")
+if not access_token:
+    query_params = st.query_params
+    access_token = query_params.get("access_token", None)
+
+st.write("access_token:", access_token)
 
 # --- 認証未完了ならログインリンクを表示 ---
 if access_token is None:
