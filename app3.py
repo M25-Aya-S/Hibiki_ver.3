@@ -31,6 +31,19 @@ query_params = st.query_params
 access_token = query_params.get("access_token", None)
 st.write("access_token:", access_token)  # トークンが取れているか確認
 
+# --- access_tokenがなければハッシュから取得を試みる ---
+if access_token is None:
+    hash_str = st_javascript("window.location.hash")
+    st.write("window.location.hash:", hash_str)  # デバッグ用
+    if hash_str and hash_str.startswith("#"):
+        query_str = hash_str[1:]  # #を除く
+        params = urllib.parse.parse_qs(query_str)
+        access_token_list = params.get("access_token", [])
+        if access_token_list:
+            access_token = access_token_list[0]
+            st.experimental_set_query_params(access_token=access_token)  # URLにもセット
+            st.write("access_token (hash):", access_token)  # 取得できたトークン
+
 # --- 認証未完了ならログインリンクを表示 ---
 if access_token is None:
     login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
