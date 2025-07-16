@@ -25,7 +25,7 @@ st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
 # 認証トークン取得（JavaScript経由）
-token = st.experimental_get_query_params().get("access_token", [None])[0]
+token = st.query_params.get("access_token", None)
 
 if token is None:
     iframe_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
