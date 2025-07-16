@@ -29,6 +29,7 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 # --- 認証トークン取得（URLのクエリから） ---
 query_params = st.query_params
 access_token = query_params.get("access_token", None)
+st.write("access_token:", access_token)  # トークンが取れているか確認
 
 # --- 認証未完了ならログインリンクを表示 ---
 if access_token is None:
@@ -40,6 +41,7 @@ if access_token is None:
 # --- トークンでユーザー情報取得 ---
 try:
     user = supabase.auth.get_user(access_token)
+    st.write("user_res:", user_res)  # ここで中身を確認
     if user and user.user:
         st.session_state["user"] = {
             "email": user.user.email,
@@ -52,6 +54,8 @@ try:
 except Exception as e:
     st.error("ログイン処理に失敗しました。ページを再読み込みしてください。")
     st.stop()
+
+st.write("session_state user:", st.session_state.get("user"))
 
 # --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
