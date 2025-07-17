@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-import logging
+from logging import getLogger, StreamHandler ,handlers, Formatter, DEBUG, INFO
 from supabase import create_client
 import streamlit.components.v1 as components
 from streamlit_javascript import st_javascript
@@ -23,6 +23,15 @@ APP_URL = st.secrets["APP_URL"]
 
 logger = logging.getLogger('streamlit_app')
 logger.setLevel(logging.DEBUG)
+# ファイルに出力するためのハンドラの設定をして、addHandler()する
+#rotating_handler = __create_rotating_handeler(file_path)
+#logger.addHandler(rotating_handler)
+
+# ストリームに出力するためのハンドラの設定をして、addHandler()する
+stream_handler = StreamHandler(sys.stdout)
+stream_handler.setLevel(DEBUG)
+logger.addHandler(stream_handler)
+
 
 # --- Supabase クライアント作成 ---
 supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
