@@ -77,7 +77,7 @@ try:
             "email": email,
             "id": user.user.id,
         }
-        st.success(f"こんにちは、{display name} さん！")
+        st.success(f"こんにちは、{email} さん！")
     else:
         st.error("ユーザー情報を取得できませんでした。")
         st.stop()
