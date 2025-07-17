@@ -56,7 +56,7 @@ if "access_token" not in st.session_state:
             st_javascript("window.history.replaceState(null, null, window.location.pathname);")
 
             # ページ再読み込みしてセッション反映
-            st.experimental_rerun()
+            st.rerun()
 
 # --- トークン取得できていなければログイン誘導 ---
 access_token = st.session_state.get("access_token", None)
