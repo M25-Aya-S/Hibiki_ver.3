@@ -77,7 +77,7 @@ try:
             "email": email,
             "id": user.user.id,
         }
-        st.success(f"こんにちは、{email} さん！")
+        st.success(f"こんにちは、{display name} さん！")
     else:
         st.error("ユーザー情報を取得できませんでした。")
         st.stop()
@@ -93,7 +93,7 @@ store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
 store = store_cm.__enter__()
 store.setup()
 
-user_id = st.session_state["user"]["email"]  # ユーザーのemailをIDに使う（暫定）
+user_id = st.session_state["user"]["uid"]  # ユーザーのemailをIDに使う（暫定）
 namespace = ("memories", user_id)
 
 manage_tool = create_manage_memory_tool(store=store, namespace=("memories", user_id))
