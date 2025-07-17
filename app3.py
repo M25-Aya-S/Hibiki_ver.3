@@ -27,28 +27,31 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
-
-# --- URLのハッシュからaccess_tokenを取得（初回のみ）---
+# --- アクセストークンの取得（最初はセッションを確認） ---
 if "access_token" not in st.session_state:
+    # JavaScriptでURLの#以降（フラグメント）を取得
     hash_str = st_javascript("window.location.hash")
+
     if hash_str and hash_str.startswith("#"):
-        parsed = urllib.parse.parse_qs(hash_str[1:])
-        token = parsed.get("access_token", [None])[0]
+        # パースしてaccess_tokenを取得
+        query = urllib.parse.parse_qs(hash_str[1:])
+        token = query.get("access_token", [None])[0]
+
         if token:
             st.session_state["access_token"] = token
-            # URLのハッシュを消しておく
-            st_javascript("window.history.replaceState(null, null, window.location.pathname + window.location.search);")
 
-# --- アクセストークン取得 ---
+            # ハッシュをURLから削除（美観のため）
+            st_javascript("""
+                window.history.replaceState(null, null, window.location.pathname + window.location.search);
+            """)
+
+            # ✅ トークンを保存したら即リロード（セッションに反映させるため）
+            st.experimental_rerun()
+
+# --- トークン取得後の処理 ---
 access_token = st.session_state.get("access_token", None)
 
-
-st.write("アクセストークン:", access_token)
-st.write("セッションユーザー:", st.session_state.get("user"))
-
-
-# --- 認証されていなければログインリンク表示 ---
-if access_token is None:
+if not access_token:
     login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
     st.warning("Googleでログインしてください。")
     st.markdown(f"[➡️ Googleでログインする]({login_url})")
