@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 import logging
+import sys
 from logging import getLogger, StreamHandler ,handlers, Formatter, DEBUG, INFO
 from supabase import create_client
 import streamlit.components.v1 as components
