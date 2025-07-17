@@ -27,44 +27,36 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
-# --- 認証トークン取得（URLのクエリから） ---
-query_params = st.query_params
-access_token = query_params.get("access_token", None)
-st.write("access_token:", access_token)  # トークンが取れているか確認
 
-# --- 1. JSでハッシュのaccess_tokenを取得し、セッションに保存 ---
+# --- URLのハッシュからaccess_tokenを取得（初回のみ）---
 if "access_token" not in st.session_state:
     hash_str = st_javascript("window.location.hash")
     if hash_str and hash_str.startswith("#"):
-        query_str = hash_str[1:]
-        params = urllib.parse.parse_qs(query_str)
-        access_token_list = params.get("access_token", [])
-        if access_token_list:
-            st.session_state["access_token"] = access_token_list[0]
-            # ハッシュをURLから削除（見た目用）
-            st_javascript("""
-            window.history.replaceState(null, null, window.location.pathname + window.location.search);
-            """)
+        parsed = urllib.parse.parse_qs(hash_str[1:])
+        token = parsed.get("access_token", [None])[0]
+        if token:
+            st.session_state["access_token"] = token
+            # URLのハッシュを消しておく
+            st_javascript("window.history.replaceState(null, null, window.location.pathname + window.location.search);")
 
-# --- 2. セッションのトークン優先、なければクエリパラメータを利用 ---
-access_token = st.session_state.get("access_token")
-if not access_token:
-    query_params = st.query_params
-    access_token = query_params.get("access_token", None)
+# --- アクセストークン取得 ---
+access_token = st.session_state.get("access_token", None)
 
-st.write("access_token:", access_token)
 
-# --- 認証未完了ならログインリンクを表示 ---
+st.write("アクセストークン:", access_token)
+st.write("セッションユーザー:", st.session_state.get("user"))
+
+
+# --- 認証されていなければログインリンク表示 ---
 if access_token is None:
     login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
-    st.markdown("Googleでログインしてください。")
+    st.warning("Googleでログインしてください。")
     st.markdown(f"[➡️ Googleでログインする]({login_url})")
     st.stop()
 
-# --- トークンでユーザー情報取得 ---
+# --- Supabaseでユーザー情報を取得 ---
 try:
     user = supabase.auth.get_user(access_token)
-    st.write("user_res:", user_res)  # ここで中身を確認
     if user and user.user:
         st.session_state["user"] = {
             "email": user.user.email,
@@ -72,13 +64,11 @@ try:
         }
         st.success(f"こんにちは、{user.user.email} さん！")
     else:
-        st.error("ユーザー情報を取得できませんでした。")
+        st.error("ユーザー情報が取得できませんでした。")
         st.stop()
 except Exception as e:
-    st.error("ログイン処理に失敗しました。ページを再読み込みしてください。")
+    st.error("ログインエラー: トークンが無効か期限切れの可能性があります。")
     st.stop()
-
-st.write("session_state user:", st.session_state.get("user"))
 
 # --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
