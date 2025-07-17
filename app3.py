@@ -1,5 +1,6 @@
 import os
 import streamlit as st
+from streamlit_url_fragment import get_fragment
 import logging
 import sys
 from logging import getLogger, StreamHandler ,handlers, Formatter, DEBUG, INFO
@@ -25,10 +26,6 @@ APP_URL = st.secrets["APP_URL"]
 
 logger = logging.getLogger('streamlit_app')
 logger.setLevel(logging.DEBUG)
-# ファイルに出力するためのハンドラの設定をして、addHandler()する
-#rotating_handler = __create_rotating_handeler(file_path)
-#logger.addHandler(rotating_handler)
-
 # ストリームに出力するためのハンドラの設定をして、addHandler()する
 stream_handler = StreamHandler(sys.stdout)
 stream_handler.setLevel(DEBUG)
@@ -44,7 +41,8 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 
 # --- セッションにトークンがなければ取得を試みる ---
 if "access_token" not in st.session_state:
-    hash_str = st_javascript("window.location.hash")
+    #hash_str = st_javascript("window.location.hash")
+    hash_str = get_fragment()
     logger.info("ハッシュ = "+ hash_str)
 
     if hash_str and hash_str.startswith("#"):
