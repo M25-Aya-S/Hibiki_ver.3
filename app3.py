@@ -27,51 +27,52 @@ supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 st.set_page_config(page_title="ひびきチャット", layout="centered")
 st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう 🌸</h1>", unsafe_allow_html=True)
 
-# --- アクセストークンの取得（最初はセッションを確認） ---
+# --- セッションにトークンがなければ取得を試みる ---
 if "access_token" not in st.session_state:
-    # JavaScriptでURLの#以降（フラグメント）を取得
     hash_str = st_javascript("window.location.hash")
 
     if hash_str and hash_str.startswith("#"):
-        # パースしてaccess_tokenを取得
         query = urllib.parse.parse_qs(hash_str[1:])
         token = query.get("access_token", [None])[0]
 
         if token:
             st.session_state["access_token"] = token
 
-            # ハッシュをURLから削除（美観のため）
-            st_javascript("""
-                window.history.replaceState(null, null, window.location.pathname + window.location.search);
-            """)
+            # URLのハッシュを削除（見た目を綺麗に）
+            st_javascript("window.history.replaceState(null, null, window.location.pathname);")
 
-            # ✅ トークンを保存したら即リロード（セッションに反映させるため）
+            # ページ再読み込みしてセッション反映
             st.experimental_rerun()
 
-# --- トークン取得後の処理 ---
+# --- トークン取得できていなければログイン誘導 ---
 access_token = st.session_state.get("access_token", None)
 
 if not access_token:
     login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
     st.warning("Googleでログインしてください。")
-    st.markdown(f"[➡️ Googleでログインする]({login_url})")
+    st.markdown(f"[👉 Googleでログインする]({login_url})")
     st.stop()
 
-# --- Supabaseでユーザー情報を取得 ---
+# --- トークンからユーザー情報取得 ---
 try:
     user = supabase.auth.get_user(access_token)
+
     if user and user.user:
+        email = user.user.email
         st.session_state["user"] = {
-            "email": user.user.email,
-            "id": user.user.id
+            "email": email,
+            "id": user.user.id,
         }
-        st.success(f"こんにちは、{user.user.email} さん！")
+        st.success(f"こんにちは、{email} さん！")
     else:
-        st.error("ユーザー情報が取得できませんでした。")
+        st.error("ユーザー情報を取得できませんでした。")
         st.stop()
 except Exception as e:
-    st.error("ログインエラー: トークンが無効か期限切れの可能性があります。")
+    st.error(f"ログインに失敗しました。エラー: {e}")
     st.stop()
+
+# --- 認証済みのチャット画面へ進む ---
+st.write("✅ チャットを開始できます！")
 
 # --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
