@@ -45,7 +45,7 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 # --- セッションにトークンがなければ取得を試みる ---
 if "access_token" not in st.session_state:
     hash_str = st_javascript("window.location.hash")
-    logger.info(hash_str)
+    logger.info("ハッシュ = "+ hash_str)
 
     if hash_str and hash_str.startswith("#"):
         query = urllib.parse.parse_qs(hash_str[1:])
