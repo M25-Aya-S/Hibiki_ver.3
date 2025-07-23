@@ -56,42 +56,46 @@ if "access_token" not in st.session_state:
             # ページ再読み込みしてセッション反映
             st.rerun()
 
-# --- トークン取得できていなければログイン誘導 ---
-access_token = st.session_state.get("access_token", None)
+def check_login():
+    access_token = st.session_state.get("access_token", None)
 
-if not access_token:
-    login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
-    st.warning("Googleでログインしてください。")
-    st.markdown(f"[👉 Googleでログインする]({login_url})")
-    st.stop()
-
-# --- トークンからユーザー情報取得 ---
-try:
-    user = supabase.auth.get_user(access_token)
-
-    if user and user.user:
-        email = user.user.email
-        st.session_state["user"] = {
-            "email": email,
-            "id": user.user.id,
-        }
-        st.success(f"こんにちは、{email} さん！")
-        # --- ログアウトボタン ---
-        if st.button("🔓 ログアウト"):
-            for key in ["access_token", "user", "messages"]:
-                if key in st.session_state:
-                    del st.session_state[key]
-            st.success("ログアウトしました。ページを再読み込みします。")
-            st.rerun()
-    else:
-        st.error("ユーザー情報を取得できませんでした。")
+    if not access_token:
+        login_url = f"{SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to={APP_URL}"
+        st.warning("Googleでログインしてください。")
+        st.markdown(f"[👉 Googleでログインする]({login_url})")
         st.stop()
-except Exception as e:
-    st.error(f"ログインに失敗しました。エラー: {e}")
-    st.stop()
+    
+    try:
+        user = supabase.auth.get_user(access_token)
+        if user and user.user:
+            email = user.user.email
+            st.session_state["user"] = {
+                "email": email,
+                "id": user.user.id,
+            }
+            return email
+        else:
+            st.error("ユーザー情報を取得できませんでした。")
+            st.stop()
+    except Exception as e:
+        st.error(f"ログインに失敗しました。エラー: {e}")
+        st.stop()
 
 # --- 認証済みのチャット画面へ進む ---
-st.write("✅ チャットを開始できます！")
+    st.write("✅ チャットを開始できます！")
+
+# --- ログイン確認 ---
+email = check_login()
+st.success(f"こんにちは、{email} さん！")
+
+# --- ログアウトボタン ---
+if st.button("🔓 ログアウト"):
+    for key in ["access_token", "user", "messages"]:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.experimental_set_query_params()  # クエリパラメータの削除（見た目の整理）
+    st.rerun()
+
 
 # --- LangMem + Postgres 初期化 ---
 store_cm = PostgresStore.from_conn_string(POSTGRES_URL)
