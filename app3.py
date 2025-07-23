@@ -102,7 +102,7 @@ search_tool = create_search_memory_tool(store=store, namespace=("memories", user
 
 # --- セッション状態の初期化 ---
 if "messages" not in st.session_state:
-    st.session_state.messages = [AIMessage(content="こんにちは、あやさん。今日はどんな気分かな？")]
+    st.session_state.messages = [AIMessage(content="こんにちは!今日はどんな気分かな？")]
 
 # --- LangGraph 状態クラス ---
 class GraphState(dict):
