@@ -41,9 +41,7 @@ st.markdown("<h1 style='text-align: center;'>🌸 ひびきとお話ししよう
 
 # --- セッションにトークンがなければ取得を試みる ---
 if "access_token" not in st.session_state:
-    #hash_str = st_javascript("window.location.hash")
     hash_str = get_fragment()
-    #logger.info("ハッシュ = "+ hash_str)
 
     if hash_str and hash_str.startswith("#"):
         query = urllib.parse.parse_qs(hash_str[1:])
@@ -78,6 +76,13 @@ try:
             "id": user.user.id,
         }
         st.success(f"こんにちは、{email} さん！")
+        # --- ログアウトボタン ---
+        if st.button("🔓 ログアウト"):
+            for key in ["access_token", "user", "messages"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.success("ログアウトしました。ページを再読み込みします。")
+            st.rerun()
     else:
         st.error("ユーザー情報を取得できませんでした。")
         st.stop()
